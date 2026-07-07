@@ -147,9 +147,9 @@ def split_text(text: str, max_chars: int = 3600) -> list[str]:
     return chunks or [text]
 
 
-async def synthesize_chunk(text: str, path: Path, voice: str, rate: str) -> None:
+async def synthesize_chunk(text: str, path: Path, voice: str, rate: str, pitch: str) -> None:
     import edge_tts  # type: ignore
-    communicate = edge_tts.Communicate(text=text, voice=voice, rate=rate)
+    communicate = edge_tts.Communicate(text=text, voice=voice, rate=rate, pitch=pitch)
     await communicate.save(str(path))
 
 
@@ -163,21 +163,30 @@ def concat_audio(chunks: list[Path], out: Path) -> None:
 
 
 def normalize_voice_name(voice: str) -> str:
-    """Accept common Ryan voice spellings but send Edge TTS the canonical ID."""
+    """Accept friendly voice aliases but send Edge TTS the canonical ID."""
     compact = re.sub(r"[^a-z0-9]", "", voice.lower())
-    if compact == "engbryanneural":
-        return "en-GB-RyanNeural"
-    return voice
+    aliases = {
+        "aria": "en-US-AriaNeural",
+        "arianeural": "en-US-AriaNeural",
+        "enusarianeural": "en-US-AriaNeural",
+        "jenny": "en-US-JennyNeural",
+        "jennyneural": "en-US-JennyNeural",
+        "enusjennyneural": "en-US-JennyNeural",
+        "ryan": "en-GB-RyanNeural",
+        "ryanneural": "en-GB-RyanNeural",
+        "engbryanneural": "en-GB-RyanNeural",
+    }
+    return aliases.get(compact, voice)
 
 
-def synthesize_tts(text: str, voice: str, rate: str) -> tuple[Path, str]:
+def synthesize_tts(text: str, voice: str, rate: str, pitch: str) -> tuple[Path, str]:
     voice = normalize_voice_name(voice)
-    print(f"Synthesising narration with {voice}, rate {rate}")
+    print(f"Synthesising narration with {voice}, rate {rate}, pitch {pitch}")
     chunks = split_text(text)
     audio_parts: list[Path] = []
     for i, chunk in enumerate(chunks, start=1):
         out = WORK / f"tts_part_{i:02d}.mp3"
-        asyncio.run(synthesize_chunk(chunk, out, voice, rate))
+        asyncio.run(synthesize_chunk(chunk, out, voice, rate, pitch))
         audio_parts.append(out)
     tts_out = WORK / "narration_neural_voice_raw.mp3"
     concat_audio(audio_parts, tts_out)
@@ -268,6 +277,7 @@ def write_manifest(args, video: Path, text: str, source_duration: float, raw_aud
         "narration_mode": args.narration_mode,
         "voice": args.voice,
         "tts_rate": args.tts_rate,
+        "tts_pitch": args.tts_pitch,
         "target_seconds": args.target_seconds,
         "source_video": str(video),
         "source_video_duration_seconds": round(source_duration, 3),
@@ -303,11 +313,12 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--narration-mode", choices=["source_transcript", "curated_script"], default="source_transcript")
     parser.add_argument("--target-seconds", type=float, default=150.0)
-    parser.add_argument("--voice", default="en-US-JennyNeural")
+    parser.add_argument("--voice", default="en-US-AriaNeural")
     parser.add_argument("--whisper-model", default="base")
     parser.add_argument("--tts-rate", default="-5%", help="Edge TTS prosody rate, e.g. +0%%, +10%%, -5%%")
+    parser.add_argument("--tts-pitch", default="+2Hz", help="Edge TTS prosody pitch. +2Hz keeps the same speed but gives narration a warmer, friendlier lift.")
     parser.add_argument("--crf", type=int, default=23)
-    parser.add_argument("--slowdown-factor", type=float, default=2.6, help="Slow both the delivered narration and paced video by this factor. 2.6 is another 30% slower than 2.0.")
+    parser.add_argument("--slowdown-factor", type=float, default=2.6, help="Slow both the delivered narration and paced video by this factor. 2.6 is another 30%% slower than 2.0.")
     args = parser.parse_args(normalize_argv(sys.argv[1:]))
 
     WORK.mkdir(parents=True, exist_ok=True)
@@ -321,7 +332,7 @@ def main() -> None:
     (OUTPUT / "narration_text_used.txt").write_text(text + "\n", encoding="utf-8")
     print(f"Narration: {len(text.split())} words / {len(text)} chars")
 
-    raw_audio, resolved_voice = synthesize_tts(text, args.voice, args.tts_rate)
+    raw_audio, resolved_voice = synthesize_tts(text, args.voice, args.tts_rate, args.tts_pitch)
     args.voice = resolved_voice
     raw_audio_duration = probe_duration(raw_audio)
     fitted_audio, fitted_audio_duration, audio_speed_factor = fit_audio_to_window(raw_audio, args.target_seconds)

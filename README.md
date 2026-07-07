@@ -2,14 +2,14 @@
 
 This repo is designed for the issue we hit: the source screen-recording zip is too large for GitHub web upload.
 
-Use the included Colab notebook first to compress the source screen recording into a small `source_video.zip`, then upload that small file to GitHub and run the workflow to create the final MOVIN video. The workflow now generates a pleasant Microsoft neural voice narration, slows the final narration by 2.6x, and paces the entire video to that newly regenerated slower MP3 so the visuals and voice stay aligned at the smoother pace.
+Use the included Colab notebook first to compress the source screen recording into a small `source_video.zip`, then upload that small file to GitHub and run the workflow to create the final MOVIN video. The workflow now generates a warmer Microsoft Aria neural voice narration, gently lifts the pitch without changing speed, slows the final narration by 2.6x, and paces the entire video to that newly regenerated slower MP3 so the visuals and voice stay aligned at the smoother pace.
 
 ## What is inside
 
 - `colab/MOVIN_Compress_Video_For_GitHub_Upload.ipynb` — Google Colab notebook to compress the large input video zip.
 - `scripts/compress_video_for_github.py` — the same compression logic as a standalone Python script.
-- `.github/workflows/build-video.yml` — GitHub Actions workflow to generate the final 2.6x-slowed MP4 with a nice neural voice.
-- `scripts/build_video.py` — extracts/transcribes narration or uses the curated script, creates a neural voice MP3, regenerates the slowed narration MP3 at the requested factor, paces the video to that slowed audio, and exports the final MP4.
+- `.github/workflows/build-video.yml` — GitHub Actions workflow to generate the final 2.6x-slowed MP4 with a warmer neural voice.
+- `scripts/build_video.py` — extracts/transcribes narration or uses the curated script, creates a warmer neural voice MP3, regenerates the slowed narration MP3 at the requested factor, paces the video to that slowed audio, and exports the final MP4.
 - `narration/curated_2_3_min.md` — fallback executive narration for MOVIN automation.
 
 ## Step 1 — Compress the source video in Colab
@@ -53,18 +53,19 @@ This file should be under ~22 MB by default, so GitHub web upload should accept 
 1. Go to **Actions**.
 2. Select **Build Nice Slowed MOVIN Video**.
 3. Click **Run workflow**.
-4. Keep defaults to generate a smooth neural voice and slow both the voice narration and final video by 2.6x:
+4. Keep defaults to generate a warmer, friendlier neural voice and slow both the voice narration and final video by 2.6x:
 
 ```text
 narration_mode = source_transcript
-voice = en-US-JennyNeural
+voice = en-US-AriaNeural
 tts_rate = -5%
+tts_pitch = +2Hz
 target_seconds = 150
 slowdown_factor = 2.6
 whisper_model = base
 ```
 
-With these defaults, the narration is first fitted around the 150-second target and then slowed by 2.6x, so the final MP4 is approximately 390 seconds while the full video and newly regenerated MP3 narration remain synchronized.
+With these defaults, the narration keeps the same rate and slowdown settings, uses a warmer Aria voice with a slight pitch lift, and is first fitted around the 150-second target and then slowed by 2.6x, so the final MP4 is approximately 390 seconds while the full video and newly regenerated MP3 narration remain synchronized.
 
 5. Download the artifact named `movin-nice-slowed-final-video`.
 
