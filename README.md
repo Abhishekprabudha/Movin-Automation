@@ -78,7 +78,7 @@ The action uploads:
 python scripts/build_video.py \
   --voice en-US-GuyNeural \
   --tts-rate=-2% \
-  --tts-pitch -1Hz
+  --tts-pitch=-1Hz
 ```
 
 ## Local compression alternative

@@ -290,8 +290,12 @@ def normalize_argv(argv: list[str]) -> list[str]:
     i = 0
     while i < len(argv):
         arg = argv[i]
-        if arg == "--tts-rate" and i + 1 < len(argv):
-            normalized.append(f"--tts-rate={argv[i + 1]}")
+        if arg in {"--tts-rate", "--tts-pitch"} and i + 1 < len(argv):
+            # argparse treats values that begin with '-' as new options when
+            # they are passed as the next token. Edge TTS rate/pitch values are
+            # commonly negative (for example, -2% and -1Hz), so rewrite both
+            # forms to --flag=value before parsing.
+            normalized.append(f"{arg}={argv[i + 1]}")
             i += 2
             continue
         normalized.append(arg)
