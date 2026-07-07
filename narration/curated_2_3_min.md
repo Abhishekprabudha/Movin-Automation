@@ -1,0 +1,13 @@
+MOVIN has a very clear automation opportunity: reduce manual customer-service load, accelerate exception closure, and improve shipment reliability without disrupting the operating rhythm that already exists across Shipsy, Salesforce, Genesys, WhatsApp and the MOVIN teams.
+
+AIONOS proposes a two-pronged, partnership-led approach.
+
+First, we align with the Shipsy solution. Shipsy remains the operating backbone for consignment state, booking, tracking, POD, DWS events, dispatcher visibility and incident management. AIONOS helps make that backbone more effective by integrating customer channels, Salesforce case visibility, Genesys voice flows, WhatsApp routing, and measurable KPI control. The immediate focus is on four high-impact agents: Appointment and Demurrage, POD response and validation, WISMO queries, and Weight Disputes. Each agent should not just answer the customer; it should write back the right action, create an audit trail, and surface exceptions to the human team only when intervention is truly required.
+
+Second, AIONOS can expose Unifleet as a flexible AI-agent layer around the same problem. This is not positioned as a replacement discussion. It is positioned as optionality. Unifleet can run in three ways: as a standalone control layer using bulk upload, as an API provider into Shipsy for appointments and customer-led shipment actions, or as an API-integrated layer where Shipsy data and AIONOS orchestration work together. This gives MOVIN a practical path to automate quickly today, while retaining future control over experience, intelligence, and operating data.
+
+From the customer perspective, the experience becomes simple. A customer enters a business name or phone number, sees associated live shipments, selects the shipment, books or modifies an appointment, requests POD, checks status, raises weight disputes, or confirms delivery availability. From the operations perspective, AIONOS helps identify lanes trending higher or lower than normal TAT, flags demurrage risk, detects likely delivery failure, and triggers real-time customer calls where action can still save the SLA.
+
+The outcome is not just automation. It is a measurable operating system for customer experience: faster response times, fewer repeat contacts, higher first-time resolution, lower manual effort, improved appointment conversion, better demurrage prevention, and stronger auditability across every customer interaction.
+
+The recommended next step is a short controlled pilot: agree the integration pattern, select the first two use cases, test with live consignments in shadow mode, move to human-in-the-loop approval, and then scale to autonomous execution once the KPI thresholds are met.
