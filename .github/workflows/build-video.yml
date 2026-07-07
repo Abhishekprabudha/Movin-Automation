@@ -77,7 +77,7 @@ jobs:
           python scripts/build_video.py \
             --voice "${{ inputs.voice }}" \
             --tts-rate="${{ inputs.tts_rate }}" \
-            --tts-pitch "${{ inputs.tts_pitch }}"
+            --tts-pitch="${{ inputs.tts_pitch }}"
 
       - name: Upload final video artifact
         uses: actions/upload-artifact@v4
