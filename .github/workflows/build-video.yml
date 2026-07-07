@@ -18,7 +18,7 @@ on:
       voice:
         description: "Microsoft neural voice"
         required: true
-        default: "en-US-JennyNeural"
+        default: "en-US-AriaNeural"
       whisper_model:
         description: "Whisper model for source_transcript mode"
         required: true
@@ -32,6 +32,10 @@ on:
         description: "Voice speaking rate before final slowdown. -5% gives a smoother narration."
         required: true
         default: "-5%"
+      tts_pitch:
+        description: "Voice pitch before final slowdown. +2Hz adds a warmer, nicer tone without changing speed."
+        required: true
+        default: "+2Hz"
       source_video_url:
         description: "Optional direct URL to source_video.zip or MP4 if not committed to input/"
         required: false
@@ -97,6 +101,7 @@ jobs:
             --voice "${{ inputs.voice }}" \
             --whisper-model "${{ inputs.whisper_model }}" \
             --tts-rate="${{ inputs.tts_rate }}" \
+            --tts-pitch "${{ inputs.tts_pitch }}" \
             --slowdown-factor "${{ inputs.slowdown_factor }}"
 
       - name: Upload final video artifact
