@@ -12,7 +12,7 @@ on:
           - source_transcript
           - curated_script
       target_seconds:
-        description: "Pre-slowdown target narration duration in seconds. With 2x slowdown, 150 exports about 300 seconds."
+        description: "Pre-slowdown target narration duration in seconds. With 2.6x slowdown, 150 exports about 390 seconds."
         required: true
         default: "150"
       voice:
@@ -25,9 +25,9 @@ on:
         default: "base"
 
       slowdown_factor:
-        description: "Final slowdown factor for both video and narration. 2.0 = half speed."
+        description: "Final slowdown factor for both video and narration. 2.6 is another 30% slower than 2.0."
         required: true
-        default: "2.0"
+        default: "2.6"
       tts_rate:
         description: "Voice speaking rate before final slowdown. -5% gives a smoother narration."
         required: true

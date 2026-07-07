@@ -307,7 +307,7 @@ def main() -> None:
     parser.add_argument("--whisper-model", default="base")
     parser.add_argument("--tts-rate", default="-5%", help="Edge TTS prosody rate, e.g. +0%%, +10%%, -5%%")
     parser.add_argument("--crf", type=int, default=23)
-    parser.add_argument("--slowdown-factor", type=float, default=2.0, help="Slow both the delivered narration and paced video by this factor. 2.0 halves the speed.")
+    parser.add_argument("--slowdown-factor", type=float, default=2.6, help="Slow both the delivered narration and paced video by this factor. 2.6 is another 30% slower than 2.0.")
     args = parser.parse_args(normalize_argv(sys.argv[1:]))
 
     WORK.mkdir(parents=True, exist_ok=True)
