@@ -1,41 +1,20 @@
-name: Build Nice Slowed MOVIN Video
+name: Build Fresh MOVIN Voiceover Video
 
 on:
   workflow_dispatch:
     inputs:
-      narration_mode:
-        description: "source_transcript revoices existing narration; curated_script uses the included script"
-        required: true
-        default: "source_transcript"
-        type: choice
-        options:
-          - source_transcript
-          - curated_script
-      target_seconds:
-        description: "Pre-slowdown target narration duration in seconds. With 2.6x slowdown, 150 exports about 390 seconds."
-        required: true
-        default: "150"
       voice:
-        description: "Microsoft neural voice"
+        description: "Microsoft neural voice for the brand-new narration"
         required: true
-        default: "en-US-AriaNeural"
-      whisper_model:
-        description: "Whisper model for source_transcript mode"
-        required: true
-        default: "base"
-
-      slowdown_factor:
-        description: "Final slowdown factor for both video and narration. 2.6 is another 30% slower than 2.0."
-        required: true
-        default: "2.6"
+        default: "en-US-GuyNeural"
       tts_rate:
-        description: "Voice speaking rate before final slowdown. -5% gives a smoother narration."
+        description: "Voice speaking rate for the new narration bed"
         required: true
-        default: "-5%"
+        default: "-2%"
       tts_pitch:
-        description: "Voice pitch before final slowdown. +2Hz adds a warmer, nicer tone without changing speed."
+        description: "Voice pitch for the new narration bed"
         required: true
-        default: "+2Hz"
+        default: "-1Hz"
       source_video_url:
         description: "Optional direct URL to source_video.zip or MP4 if not committed to input/"
         required: false
@@ -93,20 +72,16 @@ jobs:
           print('Using input candidates:', [str(f) for f in files])
           PY
 
-      - name: Build slowed narrated paced video
+      - name: Build fresh context-aligned voiceover video
         run: |
           python scripts/build_video.py \
-            --narration-mode "${{ inputs.narration_mode }}" \
-            --target-seconds "${{ inputs.target_seconds }}" \
             --voice "${{ inputs.voice }}" \
-            --whisper-model "${{ inputs.whisper_model }}" \
             --tts-rate="${{ inputs.tts_rate }}" \
-            --tts-pitch "${{ inputs.tts_pitch }}" \
-            --slowdown-factor "${{ inputs.slowdown_factor }}"
+            --tts-pitch "${{ inputs.tts_pitch }}"
 
       - name: Upload final video artifact
         uses: actions/upload-artifact@v4
         with:
-          name: movin-nice-slowed-final-video
+          name: movin-fresh-voiceover-final-video
           path: output/*
           retention-days: 14
