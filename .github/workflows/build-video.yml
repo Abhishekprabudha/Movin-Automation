@@ -1,0 +1,96 @@
+name: Build Ryan Narrated MOVIN Video
+
+on:
+  workflow_dispatch:
+    inputs:
+      narration_mode:
+        description: "source_transcript revoices existing narration; curated_script uses the included 2–3 min script"
+        required: true
+        default: "source_transcript"
+        type: choice
+        options:
+          - source_transcript
+          - curated_script
+      target_seconds:
+        description: "Target final duration in seconds. 150 = 2.5 minutes."
+        required: true
+        default: "150"
+      voice:
+        description: "Microsoft neural voice"
+        required: true
+        default: "en-GB-RyanNeural"
+      whisper_model:
+        description: "Whisper model for source_transcript mode"
+        required: true
+        default: "base"
+      source_video_url:
+        description: "Optional direct URL to source_video.zip or MP4 if not committed to input/"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Install FFmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Download external source video if URL provided
+        if: ${{ inputs.source_video_url != '' }}
+        run: |
+          mkdir -p input
+          python - <<'PY'
+          import os, urllib.request
+          url = os.environ['SOURCE_VIDEO_URL']
+          suffix = '.zip' if url.lower().split('?')[0].endswith('.zip') else '.mp4'
+          target = 'input/source_video_external' + suffix
+          urllib.request.urlretrieve(url, target)
+          print('Downloaded to', target)
+          PY
+        env:
+          SOURCE_VIDEO_URL: ${{ inputs.source_video_url }}
+
+      - name: Confirm input exists
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          files = list(Path('input').glob('*.zip')) + list(Path('input').glob('*.mp4')) + list(Path('input').glob('*.mov'))
+          if not files:
+              raise SystemExit('No video found. Upload Colab output to input/source_video.zip or provide source_video_url.')
+          print('Using input candidates:', [str(f) for f in files])
+          PY
+
+      - name: Build narrated paced video
+        run: |
+          python scripts/build_video.py \
+            --narration-mode "${{ inputs.narration_mode }}" \
+            --target-seconds "${{ inputs.target_seconds }}" \
+            --voice "${{ inputs.voice }}" \
+            --whisper-model "${{ inputs.whisper_model }}"
+
+      - name: Upload final video artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: movin-ryan-neural-final-video
+          path: output/*
+          retention-days: 14
