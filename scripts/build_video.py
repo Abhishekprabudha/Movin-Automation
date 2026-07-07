@@ -162,7 +162,16 @@ def concat_audio(chunks: list[Path], out: Path) -> None:
     run(["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", str(concat_file), "-c", "copy", str(out)])
 
 
-def synthesize_tts(text: str, voice: str, rate: str) -> Path:
+def normalize_voice_name(voice: str) -> str:
+    """Accept common Ryan voice spellings but send Edge TTS the canonical ID."""
+    compact = re.sub(r"[^a-z0-9]", "", voice.lower())
+    if compact == "engbryanneural":
+        return "en-GB-RyanNeural"
+    return voice
+
+
+def synthesize_tts(text: str, voice: str, rate: str) -> tuple[Path, str]:
+    voice = normalize_voice_name(voice)
     print(f"Synthesising narration with {voice}, rate {rate}")
     chunks = split_text(text)
     audio_parts: list[Path] = []
@@ -172,7 +181,7 @@ def synthesize_tts(text: str, voice: str, rate: str) -> Path:
         audio_parts.append(out)
     tts_out = WORK / "narration_en_gb_ryan_raw.mp3"
     concat_audio(audio_parts, tts_out)
-    return tts_out
+    return tts_out, voice
 
 
 def atempo_filter(factor: float) -> str:
@@ -281,9 +290,9 @@ def main() -> None:
     parser.add_argument("--target-seconds", type=float, default=150.0)
     parser.add_argument("--voice", default="en-GB-RyanNeural")
     parser.add_argument("--whisper-model", default="base")
-    parser.add_argument("--tts-rate", default="+0%", help="Edge TTS prosody rate, e.g. +0%, +10%, -5%")
+    parser.add_argument("--tts-rate", default="+0%", help="Edge TTS prosody rate, e.g. +0%%, +10%%, -5%%")
     parser.add_argument("--crf", type=int, default=23)
-    parser.add_argument("--slowdown-factor", type=float, default=3.0, help="Slow final narration MP3 and aligned video by this multiplier. 3.0 makes the output three times longer.")
+    parser.add_argument("--slowdown-factor", type=float, default=1.0, help=argparse.SUPPRESS)
     args = parser.parse_args()
 
     WORK.mkdir(parents=True, exist_ok=True)
@@ -297,7 +306,8 @@ def main() -> None:
     (OUTPUT / "narration_text_used.txt").write_text(text + "\n", encoding="utf-8")
     print(f"Narration: {len(text.split())} words / {len(text)} chars")
 
-    raw_audio = synthesize_tts(text, args.voice, args.tts_rate)
+    raw_audio, resolved_voice = synthesize_tts(text, args.voice, args.tts_rate)
+    args.voice = resolved_voice
     raw_audio_duration = probe_duration(raw_audio)
     fitted_audio, fitted_audio_duration, audio_speed_factor = fit_audio_to_window(raw_audio, args.target_seconds)
     final_audio, final_audio_duration = slow_audio(fitted_audio, args.slowdown_factor)
