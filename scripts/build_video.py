@@ -170,7 +170,7 @@ def synthesize_tts(text: str, voice: str, rate: str) -> Path:
         out = WORK / f"tts_part_{i:02d}.mp3"
         asyncio.run(synthesize_chunk(chunk, out, voice, rate))
         audio_parts.append(out)
-    tts_out = OUTPUT / "narration_en_gb_ryan.mp3"
+    tts_out = WORK / "narration_en_gb_ryan_raw.mp3"
     concat_audio(audio_parts, tts_out)
     return tts_out
 
@@ -213,6 +213,22 @@ def fit_audio_to_window(audio: Path, target_seconds: float, min_seconds: float =
     return final_audio, duration, 1.0
 
 
+def slow_audio(audio: Path, slowdown_factor: float) -> tuple[Path, float]:
+    """Create the delivered MP3 slowed by slowdown_factor while preserving pitch."""
+    if slowdown_factor <= 0:
+        raise ValueError("Slowdown factor must be positive")
+
+    slowed_audio = OUTPUT / "narration_en_gb_ryan.mp3"
+    if math.isclose(slowdown_factor, 1.0):
+        shutil.copyfile(audio, slowed_audio)
+    else:
+        tempo = 1.0 / slowdown_factor
+        filt = atempo_filter(tempo)
+        print(f"Slowing final narration audio by {slowdown_factor:.3f}x with tempo factor {tempo:.3f}")
+        run(["ffmpeg", "-y", "-i", str(audio), "-filter:a", filt, "-c:a", "libmp3lame", "-b:a", "192k", str(slowed_audio)])
+    return slowed_audio, probe_duration(slowed_audio)
+
+
 def build_video(video: Path, audio: Path, final_duration: float, crf: int) -> Path:
     source_duration = probe_duration(video)
     speed = source_duration / final_duration
@@ -238,7 +254,7 @@ def build_video(video: Path, audio: Path, final_duration: float, crf: int) -> Pa
     return out
 
 
-def write_manifest(args, video: Path, text: str, source_duration: float, raw_audio_duration: float, final_audio_duration: float, audio_speed_factor: float, final_video: Path) -> None:
+def write_manifest(args, video: Path, text: str, source_duration: float, raw_audio_duration: float, fitted_audio_duration: float, final_audio_duration: float, audio_speed_factor: float, final_video: Path) -> None:
     manifest = {
         "narration_mode": args.narration_mode,
         "voice": args.voice,
@@ -247,8 +263,10 @@ def write_manifest(args, video: Path, text: str, source_duration: float, raw_aud
         "source_video": str(video),
         "source_video_duration_seconds": round(source_duration, 3),
         "raw_tts_duration_seconds": round(raw_audio_duration, 3),
+        "fitted_audio_duration_seconds": round(fitted_audio_duration, 3),
         "final_audio_duration_seconds": round(final_audio_duration, 3),
-        "audio_speed_factor": round(audio_speed_factor, 4),
+        "audio_fit_speed_factor": round(audio_speed_factor, 4),
+        "audio_slowdown_factor": round(args.slowdown_factor, 4),
         "video_speed_factor": round(source_duration / final_audio_duration, 4),
         "final_video": str(final_video),
         "narration_character_count": len(text),
@@ -265,6 +283,7 @@ def main() -> None:
     parser.add_argument("--whisper-model", default="base")
     parser.add_argument("--tts-rate", default="+0%", help="Edge TTS prosody rate, e.g. +0%, +10%, -5%")
     parser.add_argument("--crf", type=int, default=23)
+    parser.add_argument("--slowdown-factor", type=float, default=3.0, help="Slow final narration MP3 and aligned video by this multiplier. 3.0 makes the output three times longer.")
     args = parser.parse_args()
 
     WORK.mkdir(parents=True, exist_ok=True)
@@ -280,10 +299,11 @@ def main() -> None:
 
     raw_audio = synthesize_tts(text, args.voice, args.tts_rate)
     raw_audio_duration = probe_duration(raw_audio)
-    final_audio, final_audio_duration, audio_speed_factor = fit_audio_to_window(raw_audio, args.target_seconds)
+    fitted_audio, fitted_audio_duration, audio_speed_factor = fit_audio_to_window(raw_audio, args.target_seconds)
+    final_audio, final_audio_duration = slow_audio(fitted_audio, args.slowdown_factor)
 
     final_video = build_video(video, final_audio, final_audio_duration, args.crf)
-    write_manifest(args, video, text, source_duration, raw_audio_duration, final_audio_duration, audio_speed_factor, final_video)
+    write_manifest(args, video, text, source_duration, raw_audio_duration, fitted_audio_duration, final_audio_duration, audio_speed_factor, final_video)
 
     print("\nDone.")
     print(f"Final video: {final_video}")
