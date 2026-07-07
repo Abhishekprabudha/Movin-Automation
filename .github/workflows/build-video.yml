@@ -96,7 +96,7 @@ jobs:
             --target-seconds "${{ inputs.target_seconds }}" \
             --voice "${{ inputs.voice }}" \
             --whisper-model "${{ inputs.whisper_model }}" \
-            --tts-rate "${{ inputs.tts_rate }}" \
+            --tts-rate="${{ inputs.tts_rate }}" \
             --slowdown-factor "${{ inputs.slowdown_factor }}"
 
       - name: Upload final video artifact
