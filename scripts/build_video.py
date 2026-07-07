@@ -284,6 +284,21 @@ def write_manifest(args, video: Path, text: str, source_duration: float, raw_aud
     (OUTPUT / "build_manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
 
 
+def normalize_argv(argv: list[str]) -> list[str]:
+    """Allow negative-looking --tts-rate values such as -5% without requiring equals syntax."""
+    normalized: list[str] = []
+    i = 0
+    while i < len(argv):
+        arg = argv[i]
+        if arg == "--tts-rate" and i + 1 < len(argv):
+            normalized.append(f"--tts-rate={argv[i + 1]}")
+            i += 2
+            continue
+        normalized.append(arg)
+        i += 1
+    return normalized
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--narration-mode", choices=["source_transcript", "curated_script"], default="source_transcript")
@@ -293,7 +308,7 @@ def main() -> None:
     parser.add_argument("--tts-rate", default="-5%", help="Edge TTS prosody rate, e.g. +0%%, +10%%, -5%%")
     parser.add_argument("--crf", type=int, default=23)
     parser.add_argument("--slowdown-factor", type=float, default=2.0, help="Slow both the delivered narration and paced video by this factor. 2.0 halves the speed.")
-    args = parser.parse_args()
+    args = parser.parse_args(normalize_argv(sys.argv[1:]))
 
     WORK.mkdir(parents=True, exist_ok=True)
     OUTPUT.mkdir(parents=True, exist_ok=True)
