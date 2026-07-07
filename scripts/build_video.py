@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build a 2–3 minute MOVIN narrated video with en-GB-RyanNeural.
+"""Build a slowed MOVIN narrated video with a natural Microsoft neural voice.
 
 Modes:
 - source_transcript: transcribe the source video's existing audio with Whisper, then revoice it.
@@ -179,7 +179,7 @@ def synthesize_tts(text: str, voice: str, rate: str) -> tuple[Path, str]:
         out = WORK / f"tts_part_{i:02d}.mp3"
         asyncio.run(synthesize_chunk(chunk, out, voice, rate))
         audio_parts.append(out)
-    tts_out = WORK / "narration_en_gb_ryan_raw.mp3"
+    tts_out = WORK / "narration_neural_voice_raw.mp3"
     concat_audio(audio_parts, tts_out)
     return tts_out, voice
 
@@ -227,7 +227,7 @@ def slow_audio(audio: Path, slowdown_factor: float) -> tuple[Path, float]:
     if slowdown_factor <= 0:
         raise ValueError("Slowdown factor must be positive")
 
-    slowed_audio = OUTPUT / "narration_en_gb_ryan.mp3"
+    slowed_audio = OUTPUT / "narration_nice_neural_voice.mp3"
     if math.isclose(slowdown_factor, 1.0):
         shutil.copyfile(audio, slowed_audio)
     else:
@@ -241,7 +241,7 @@ def slow_audio(audio: Path, slowdown_factor: float) -> tuple[Path, float]:
 def build_video(video: Path, audio: Path, final_duration: float, crf: int) -> Path:
     source_duration = probe_duration(video)
     speed = source_duration / final_duration
-    out = OUTPUT / "final_movin_ryan_neural.mp4"
+    out = OUTPUT / "final_movin_nice_neural_voice.mp4"
     # Keep dimensions even; preserve aspect ratio; make it web-friendly.
     vf = f"setpts=PTS/{speed:.8f},fps=30,scale='if(gt(iw,1920),1920,iw)':'-2',format=yuv420p"
     run([
@@ -288,11 +288,11 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--narration-mode", choices=["source_transcript", "curated_script"], default="source_transcript")
     parser.add_argument("--target-seconds", type=float, default=150.0)
-    parser.add_argument("--voice", default="en-GB-RyanNeural")
+    parser.add_argument("--voice", default="en-US-JennyNeural")
     parser.add_argument("--whisper-model", default="base")
-    parser.add_argument("--tts-rate", default="+0%", help="Edge TTS prosody rate, e.g. +0%%, +10%%, -5%%")
+    parser.add_argument("--tts-rate", default="-5%", help="Edge TTS prosody rate, e.g. +0%%, +10%%, -5%%")
     parser.add_argument("--crf", type=int, default=23)
-    parser.add_argument("--slowdown-factor", type=float, default=1.0, help=argparse.SUPPRESS)
+    parser.add_argument("--slowdown-factor", type=float, default=2.0, help="Slow both the delivered narration and paced video by this factor. 2.0 halves the speed.")
     args = parser.parse_args()
 
     WORK.mkdir(parents=True, exist_ok=True)

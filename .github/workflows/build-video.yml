@@ -1,10 +1,10 @@
-name: Build Ryan Narrated MOVIN Video
+name: Build Nice Slowed MOVIN Video
 
 on:
   workflow_dispatch:
     inputs:
       narration_mode:
-        description: "source_transcript revoices existing narration; curated_script uses the included 2–3 min script"
+        description: "source_transcript revoices existing narration; curated_script uses the included script"
         required: true
         default: "source_transcript"
         type: choice
@@ -12,17 +12,26 @@ on:
           - source_transcript
           - curated_script
       target_seconds:
-        description: "Target final duration in seconds. 150 = 2.5 minutes."
+        description: "Pre-slowdown target narration duration in seconds. With 2x slowdown, 150 exports about 300 seconds."
         required: true
         default: "150"
       voice:
         description: "Microsoft neural voice"
         required: true
-        default: "en-GB-RyanNeural"
+        default: "en-US-JennyNeural"
       whisper_model:
         description: "Whisper model for source_transcript mode"
         required: true
         default: "base"
+
+      slowdown_factor:
+        description: "Final slowdown factor for both video and narration. 2.0 = half speed."
+        required: true
+        default: "2.0"
+      tts_rate:
+        description: "Voice speaking rate before final slowdown. -5% gives a smoother narration."
+        required: true
+        default: "-5%"
       source_video_url:
         description: "Optional direct URL to source_video.zip or MP4 if not committed to input/"
         required: false
@@ -80,17 +89,19 @@ jobs:
           print('Using input candidates:', [str(f) for f in files])
           PY
 
-      - name: Build narrated paced video
+      - name: Build slowed narrated paced video
         run: |
           python scripts/build_video.py \
             --narration-mode "${{ inputs.narration_mode }}" \
             --target-seconds "${{ inputs.target_seconds }}" \
             --voice "${{ inputs.voice }}" \
-            --whisper-model "${{ inputs.whisper_model }}"
+            --whisper-model "${{ inputs.whisper_model }}" \
+            --tts-rate "${{ inputs.tts_rate }}" \
+            --slowdown-factor "${{ inputs.slowdown_factor }}"
 
       - name: Upload final video artifact
         uses: actions/upload-artifact@v4
         with:
-          name: movin-ryan-neural-final-video
+          name: movin-nice-slowed-final-video
           path: output/*
           retention-days: 14
