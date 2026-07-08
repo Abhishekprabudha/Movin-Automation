@@ -240,6 +240,9 @@ def build_fresh_voiceover(beats: list[NarrationBeat], duration: float, voice: st
     bed = WORK / "fresh_narration_bed.m4a"
     concat_audio(parts, bed)
     final_mp3 = OUTPUT / "fresh_movin_voiceover.mp3"
+    # Remove any previously generated MP3 before exporting so every run starts
+    # from the curated narration content and the selected neural voice.
+    final_mp3.unlink(missing_ok=True)
     run(["ffmpeg", "-y", "-i", str(bed), "-af", "loudnorm=I=-16:TP=-1.5:LRA=11", "-t", f"{duration:.3f}", "-c:a", "libmp3lame", "-b:a", "192k", str(final_mp3)])
     return final_mp3, manifest
 
@@ -306,7 +309,7 @@ def normalize_argv(argv: list[str]) -> list[str]:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--script", default=str(NARRATION / "curated_2_3_min.md"), help="Narration context used to create the fresh voiceover")
-    parser.add_argument("--voice", default="en-US-GuyNeural", help="Microsoft neural voice or friendly alias")
+    parser.add_argument("--voice", default="en-GB-RyanNeural", help="Microsoft neural voice or friendly alias")
     parser.add_argument("--tts-rate", default="-2%", help="Edge TTS prosody rate, e.g. +0%%, +10%%, -2%%")
     parser.add_argument("--tts-pitch", default="-1Hz", help="Edge TTS prosody pitch")
     parser.add_argument("--intro-pause", type=float, default=1.25)

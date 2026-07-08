@@ -6,7 +6,7 @@ on:
       voice:
         description: "Microsoft neural voice for the brand-new narration"
         required: true
-        default: "en-US-GuyNeural"
+        default: "en-GB-RyanNeural"
       tts_rate:
         description: "Voice speaking rate for the new narration bed"
         required: true
