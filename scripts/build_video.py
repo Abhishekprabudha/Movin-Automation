@@ -27,6 +27,10 @@ WORK = ROOT / "work"
 OUTPUT = ROOT / "output"
 NARRATION = ROOT / "narration"
 
+AUDIO_SAMPLE_RATE = "44100"
+AUDIO_CHANNELS = "2"
+AUDIO_BITRATE = "160k"
+
 
 @dataclass(frozen=True)
 class NarrationBeat:
@@ -34,6 +38,17 @@ class NarrationBeat:
     title: str
     text: str
     weight: float
+
+
+def ffmpeg_audio_output_args() -> list[str]:
+    """Return a consistent AAC profile for every intermediate audio file.
+
+    Edge TTS emits mono 24 kHz MP3s while generated silence used to be stereo
+    44.1 kHz AAC. Concatenating mismatched AAC streams with `-c copy` can
+    produce invalid beds or fail partway through a GitHub Actions run, so all
+    temporary M4A files are normalized before concat.
+    """
+    return ["-ar", AUDIO_SAMPLE_RATE, "-ac", AUDIO_CHANNELS, "-c:a", "aac", "-b:a", AUDIO_BITRATE]
 
 
 def run(cmd: list[str], *, check: bool = True) -> subprocess.CompletedProcess:
@@ -180,7 +195,7 @@ def planned_timeline(beats: list[NarrationBeat], total_duration: float, intro_pa
 
 
 def silence(path: Path, duration: float) -> None:
-    run(["ffmpeg", "-y", "-f", "lavfi", "-i", "anullsrc=channel_layout=stereo:sample_rate=44100", "-t", f"{duration:.3f}", "-c:a", "aac", "-b:a", "160k", str(path)])
+    run(["ffmpeg", "-y", "-f", "lavfi", "-i", f"anullsrc=channel_layout=stereo:sample_rate={AUDIO_SAMPLE_RATE}", "-t", f"{duration:.3f}", *ffmpeg_audio_output_args(), str(path)])
 
 
 def fit_chunk_to_slot(raw: Path, out: Path, slot_seconds: float) -> dict[str, float | str]:
@@ -189,21 +204,21 @@ def fit_chunk_to_slot(raw: Path, out: Path, slot_seconds: float) -> dict[str, fl
     speed_factor = raw_duration / padded_target
     if speed_factor > 1.35:
         # Compress only when absolutely needed, keeping voice natural.
-        run(["ffmpeg", "-y", "-i", str(raw), "-filter:a", atempo_filter(speed_factor), "-c:a", "aac", "-b:a", "160k", str(out)])
+        run(["ffmpeg", "-y", "-i", str(raw), "-filter:a", atempo_filter(speed_factor), *ffmpeg_audio_output_args(), str(out)])
         action = "compressed"
     else:
-        run(["ffmpeg", "-y", "-i", str(raw), "-c:a", "aac", "-b:a", "160k", str(out)])
+        run(["ffmpeg", "-y", "-i", str(raw), *ffmpeg_audio_output_args(), str(out)])
         action = "natural"
 
     fitted_duration = probe_duration(out)
     if fitted_duration < slot_seconds:
         padded = out.with_name(out.stem + "_slot.m4a")
         pad = slot_seconds - fitted_duration
-        run(["ffmpeg", "-y", "-i", str(out), "-af", f"apad=pad_dur={pad:.3f}", "-t", f"{slot_seconds:.3f}", "-c:a", "aac", "-b:a", "160k", str(padded)])
+        run(["ffmpeg", "-y", "-i", str(out), "-af", f"apad=pad_dur={pad:.3f}", "-t", f"{slot_seconds:.3f}", *ffmpeg_audio_output_args(), str(padded)])
         shutil.move(padded, out)
     elif fitted_duration > slot_seconds:
         trimmed = out.with_name(out.stem + "_slot.m4a")
-        run(["ffmpeg", "-y", "-i", str(out), "-t", f"{slot_seconds:.3f}", "-c:a", "aac", "-b:a", "160k", str(trimmed)])
+        run(["ffmpeg", "-y", "-i", str(out), "-t", f"{slot_seconds:.3f}", *ffmpeg_audio_output_args(), str(trimmed)])
         shutil.move(trimmed, out)
     return {"raw_duration": round(raw_duration, 3), "slot_duration": round(slot_seconds, 3), "fit_action": action}
 
@@ -211,7 +226,7 @@ def fit_chunk_to_slot(raw: Path, out: Path, slot_seconds: float) -> dict[str, fl
 def concat_audio(parts: list[Path], out: Path) -> None:
     concat_file = WORK / "fresh_audio_concat.txt"
     concat_file.write_text("\n".join(f"file '{p.as_posix()}'" for p in parts), encoding="utf-8")
-    run(["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", str(concat_file), "-c", "copy", str(out)])
+    run(["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", str(concat_file), *ffmpeg_audio_output_args(), str(out)])
 
 
 def build_fresh_voiceover(beats: list[NarrationBeat], duration: float, voice: str, rate: str, pitch: str, intro_pause: float, outro_pause: float, gap: float) -> tuple[Path, list[dict[str, object]]]:
