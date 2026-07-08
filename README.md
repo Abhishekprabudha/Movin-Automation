@@ -51,10 +51,10 @@ This file should be under ~22 MB by default, so GitHub web upload should accept 
 1. Go to **Actions**.
 2. Select **Build Fresh MOVIN Voiceover Video**.
 3. Click **Run workflow**.
-4. Keep defaults to generate a new executive-style neural narration:
+4. Keep defaults to generate a new Ryan neural narration:
 
 ```text
-voice = en-US-GuyNeural
+voice = en-GB-RyanNeural
 tts_rate = -2%
 tts_pitch = -1Hz
 ```
@@ -76,7 +76,7 @@ The action uploads:
 
 ```bash
 python scripts/build_video.py \
-  --voice en-US-GuyNeural \
+  --voice en-GB-RyanNeural \
   --tts-rate=-2% \
   --tts-pitch=-1Hz
 ```
