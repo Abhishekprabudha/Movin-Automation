@@ -19,10 +19,10 @@ on:
         description: "Microsoft neural voice"
         required: true
         default: "en-GB-RyanNeural"
-      slowdown_factor:
-        description: "Slow final narration MP3 and aligned video by this multiplier. 3 = three times longer."
+      video_speed:
+        description: "Playback speed multiplier for the finished video. Use 0.5 for half speed, 2.0 for double speed."
         required: true
-        default: "3"
+        default: "1.0"
       whisper_model:
         description: "Whisper model for source_transcript mode"
         required: true
@@ -91,7 +91,7 @@ jobs:
             --target-seconds "${{ inputs.target_seconds }}" \
             --voice "${{ inputs.voice }}" \
             --whisper-model "${{ inputs.whisper_model }}" \
-            --slowdown-factor "${{ inputs.slowdown_factor }}"
+            --video-speed "${{ inputs.video_speed }}"
 
       - name: Upload final video artifact
         uses: actions/upload-artifact@v4
