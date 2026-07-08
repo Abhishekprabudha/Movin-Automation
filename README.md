@@ -1,16 +1,16 @@
-# MOVIN Automation Video — Fresh Context-Aligned Voiceover
+# MOVIN Automation Video — Colab Compression + en-GB-RyanNeural GitHub Workflow
 
-This repo builds a MOVIN automation video from a compressed source screen recording and a newly generated narration track.
+This repo is designed for the issue we hit: the source screen-recording zip is too large for GitHub web upload.
 
-The build no longer reuses, transcribes, slows, or preserves the source video's original narration. Instead, `scripts/build_video.py` treats the source video as the visual timeline, reads the business context in `narration/curated_2_3_min.md`, creates a fresh Microsoft neural voiceover beat-by-beat, pads or lightly fits each beat into its own time slot, exports a new MP3, and muxes that sound track into the final MP4.
+Use the included Colab notebook first to compress the source screen recording into a small `source_video.zip`, then upload that small file to GitHub and run the workflow to create the final Ryan Neural narrated video. The workflow now slows the fitted narration MP3 and aligned final video by 3x by default.
 
 ## What is inside
 
 - `colab/MOVIN_Compress_Video_For_GitHub_Upload.ipynb` — Google Colab notebook to compress the large input video zip.
 - `scripts/compress_video_for_github.py` — the same compression logic as a standalone Python script.
-- `.github/workflows/build-video.yml` — GitHub Actions workflow to generate the final fresh-voiceover video.
-- `scripts/build_video.py` — extracts the source video, builds a brand-new context-aligned voiceover from the curated narration, exports `fresh_movin_voiceover.mp3`, and produces the final MP4.
-- `narration/curated_2_3_min.md` — MOVIN automation context used as the source of the fresh narration.
+- `.github/workflows/build-video.yml` — GitHub Actions workflow to generate the final MP4 with `en-GB-RyanNeural`.
+- `scripts/build_video.py` — extracts/transcribes narration or uses the curated script, creates Ryan Neural MP3, slows the MP3 by 3x by default, paces the video to that slowed audio, and exports final MP4.
+- `narration/curated_2_3_min.md` — fallback 2–3 minute executive narration for MOVIN automation.
 
 ## Step 1 — Compress the source video in Colab
 
@@ -34,7 +34,9 @@ AUDIO_KBPS = 48
 SPEED_TO_SECONDS = 0
 ```
 
-`SPEED_TO_SECONDS = 0` preserves the original source timing before upload. The GitHub workflow now handles a completely new voiceover and aligns the narration bed to the source video's duration.
+`SPEED_TO_SECONDS = 0` preserves the original narration timing. This is recommended because the GitHub workflow can then transcribe and revoice the same narration in `en-GB-RyanNeural` and pace the final output to 2–3 minutes.
+
+Use `SPEED_TO_SECONDS = 150` only when you want Colab to also create a short visual preview. For source transcription, keep it at `0`.
 
 ## Step 2 — Upload compressed input to GitHub
 
@@ -49,37 +51,28 @@ This file should be under ~22 MB by default, so GitHub web upload should accept 
 ## Step 3 — Run the GitHub workflow
 
 1. Go to **Actions**.
-2. Select **Build Fresh MOVIN Voiceover Video**.
+2. Select **Build Ryan Narrated MOVIN Video**.
 3. Click **Run workflow**.
-4. Keep defaults to generate a new Ryan neural narration:
+4. Keep defaults to fit the narration to 150 seconds first, then slow the delivered MP3 and aligned video by 3x:
 
 ```text
+narration_mode = source_transcript
 voice = en-GB-RyanNeural
-tts_rate = -2%
-tts_pitch = -1Hz
+target_seconds = 150
+slowdown_factor = 3
+whisper_model = base
 ```
 
-The workflow ignores any spoken source narration, creates fresh audio from `narration/curated_2_3_min.md`, times each narration beat against the video duration, and exports a synchronized final video.
-
-5. Download the artifact named `movin-fresh-voiceover-final-video`.
+5. Download the artifact named `movin-ryan-neural-final-video`.
 
 ## Workflow outputs
 
 The action uploads:
 
-- `final_movin_fresh_voiceover.mp4` — final video with the new context-aligned voiceover
-- `fresh_movin_voiceover.mp3` — delivered MP3 built from the fresh narration bed
-- `narration_text_used.txt` — script generated from the curated MOVIN context
-- `build_manifest.json` — voice, timing, beat alignment, and output details
-
-## Local build
-
-```bash
-python scripts/build_video.py \
-  --voice en-GB-RyanNeural \
-  --tts-rate=-2% \
-  --tts-pitch=-1Hz
-```
+- `final_movin_ryan_neural.mp4` — final paced video aligned to the slowed narration
+- `narration_en_gb_ryan.mp3` — Ryan Neural narration audio slowed by the configured slowdown factor
+- `narration_text_used.txt` — transcript/script used
+- `build_manifest.json` — duration, speed, mode and configuration details
 
 ## Local compression alternative
 

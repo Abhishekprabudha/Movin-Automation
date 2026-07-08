@@ -1,20 +1,32 @@
-name: Build Fresh MOVIN Voiceover Video
+name: Build Ryan Narrated MOVIN Video
 
 on:
   workflow_dispatch:
     inputs:
+      narration_mode:
+        description: "source_transcript revoices existing narration; curated_script uses the included 2–3 min script"
+        required: true
+        default: "source_transcript"
+        type: choice
+        options:
+          - source_transcript
+          - curated_script
+      target_seconds:
+        description: "Target final duration in seconds. 150 = 2.5 minutes."
+        required: true
+        default: "150"
       voice:
-        description: "Microsoft neural voice for the brand-new narration"
+        description: "Microsoft neural voice"
         required: true
         default: "en-GB-RyanNeural"
-      tts_rate:
-        description: "Voice speaking rate for the new narration bed"
+      slowdown_factor:
+        description: "Slow final narration MP3 and aligned video by this multiplier. 3 = three times longer."
         required: true
-        default: "-2%"
-      tts_pitch:
-        description: "Voice pitch for the new narration bed"
+        default: "3"
+      whisper_model:
+        description: "Whisper model for source_transcript mode"
         required: true
-        default: "-1Hz"
+        default: "base"
       source_video_url:
         description: "Optional direct URL to source_video.zip or MP4 if not committed to input/"
         required: false
@@ -72,16 +84,18 @@ jobs:
           print('Using input candidates:', [str(f) for f in files])
           PY
 
-      - name: Build fresh context-aligned voiceover video
+      - name: Build narrated paced video
         run: |
           python scripts/build_video.py \
+            --narration-mode "${{ inputs.narration_mode }}" \
+            --target-seconds "${{ inputs.target_seconds }}" \
             --voice "${{ inputs.voice }}" \
-            --tts-rate="${{ inputs.tts_rate }}" \
-            --tts-pitch="${{ inputs.tts_pitch }}"
+            --whisper-model "${{ inputs.whisper_model }}" \
+            --slowdown-factor "${{ inputs.slowdown_factor }}"
 
       - name: Upload final video artifact
         uses: actions/upload-artifact@v4
         with:
-          name: movin-fresh-voiceover-final-video
+          name: movin-ryan-neural-final-video
           path: output/*
           retention-days: 14
