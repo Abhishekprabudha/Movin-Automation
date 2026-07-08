@@ -67,7 +67,7 @@ whisper_model = base
 
 ## Workflow outputs
 
-The action uploads:
+The action uploads these files as workflow artifacts; do not commit generated `output/` files or MP3 binaries back into the repository:
 
 - `final_movin_ryan_neural.mp4` — final paced video aligned to the slowed narration
 - `narration_en_gb_ryan.mp3` — Ryan Neural narration audio slowed by the configured slowdown factor
