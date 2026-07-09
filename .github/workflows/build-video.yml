@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       narration_mode:
-        description: "source_transcript revoices existing narration; curated_script uses the included 2–3 min script"
+        description: "source_transcript revoices existing narration; curated_script uses the included script"
         required: true
         default: "source_transcript"
         type: choice
@@ -12,9 +12,9 @@ on:
           - source_transcript
           - curated_script
       target_seconds:
-        description: "Target final duration in seconds. 150 = 2.5 minutes."
+        description: "Target final duration in seconds. 360 = 6 minutes."
         required: true
-        default: "150"
+        default: "360"
       voice:
         description: "Microsoft neural voice"
         required: true
