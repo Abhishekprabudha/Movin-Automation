@@ -4,13 +4,18 @@ on:
   workflow_dispatch:
     inputs:
       narration_mode:
-        description: "source_transcript revoices existing narration; curated_script uses the included script"
+        description: "source_transcript revoices existing narration; repo_text uses narration/narration_text.md; curated_script uses the included script"
         required: true
         default: "source_transcript"
         type: choice
         options:
           - source_transcript
           - curated_script
+          - repo_text
+      narration_text_file:
+        description: "Repo path for repo_text mode"
+        required: true
+        default: "narration/narration_text.md"
       target_seconds:
         description: "Target final duration in seconds. 360 = 6 minutes."
         required: true
@@ -101,6 +106,7 @@ jobs:
             --voice "${{ inputs.voice }}" \
             --tts-provider "${{ inputs.tts_provider }}" \
             --whisper-model "${{ inputs.whisper_model }}" \
+            --narration-text-file "${{ inputs.narration_text_file }}" \
             --video-speed "${{ inputs.video_speed }}"
         env:
           AZURE_SPEECH_KEY: ${{ secrets.AZURE_SPEECH_KEY }}

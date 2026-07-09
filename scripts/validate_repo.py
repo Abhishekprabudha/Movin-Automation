@@ -10,6 +10,7 @@ required = [
     'colab/MOVIN_Compress_Video_For_GitHub_Upload.ipynb',
     'requirements.txt',
     'narration/curated_2_3_min.md',
+    'narration/narration_text.md',
     'input/README.md',
 ]
 missing = [p for p in required if not (root / p).exists()]
