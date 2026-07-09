@@ -1,5 +1,3 @@
-# Unifleet App Demonstration Narration
-
 This is a demonstration of the Unifleet app.
 
 For this demo, we have selected three live delivery IDs, also called shipment IDs. Each shipment has a different status, so we can clearly see how the Unifleet agent identifies the shipment, reads the available information, and shows the latest status.
