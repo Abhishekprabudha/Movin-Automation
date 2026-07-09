@@ -1,3 +1,4 @@
 edge-tts
 openai-whisper
 ffmpeg-python
+azure-cognitiveservices-speech
