@@ -8,9 +8,9 @@ The first view is for the customer, or end user. The second view is for the oper
 
 Let us start with the first shipment, which has already been delivered.
 
-In the customer view, I enter the shipment ID and click Track. The app shows that the shipment was delivered on July 6. It also shows the key stages the shipment passed through before delivery.
+In the customer view, I enter the shipment ID and click Track. The app shows that the shipment was delivered on July 6. 
 
-Now let us check the same shipment in the operations view. Here, we see the same basic shipment status, along with additional operational details, including the committed dates and delivery milestones. This helps the operations team understand not only what happened, but also whether the shipment followed the expected plan.
+Now let us check the same shipment in the operations view. Here, we see the same basic shipment status, along with additional operational details, including the committed dates and delivery milestones. 
 
 Next, let us look at the second shipment. This shipment is currently at the sorting hub.
 
