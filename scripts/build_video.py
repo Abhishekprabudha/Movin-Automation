@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build a 2–3 minute MOVIN narrated video with en-GB-RyanNeural.
+"""Build a 6-minute MOVIN narrated video with en-GB-RyanNeural.
 
 Modes:
 - source_transcript: transcribe the source video's existing audio with Whisper, then revoice it.
@@ -282,7 +282,7 @@ def atempo_filter(factor: float) -> str:
     return ",".join(f"atempo={p:.6f}" for p in parts)
 
 
-def fit_audio_to_window(audio: Path, target_seconds: float, min_seconds: float = 120.0, max_seconds: float = 180.0) -> tuple[Path, float, float]:
+def fit_audio_to_window(audio: Path, target_seconds: float, min_seconds: float = 360.0, max_seconds: float = 360.0) -> tuple[Path, float, float]:
     duration = probe_duration(audio)
     desired = max(min_seconds, min(max_seconds, float(target_seconds)))
     final_audio = WORK / "narration_fitted.m4a"
@@ -296,7 +296,7 @@ def fit_audio_to_window(audio: Path, target_seconds: float, min_seconds: float =
 
     if duration < min_seconds:
         pad = min_seconds - duration
-        print(f"Audio is {duration:.2f}s; padding {pad:.2f}s silence to reach 120s")
+        print(f"Audio is {duration:.2f}s; padding {pad:.2f}s silence to reach {min_seconds:.0f}s")
         run(["ffmpeg", "-y", "-i", str(audio), "-af", f"apad=pad_dur={pad:.3f}", "-t", f"{min_seconds:.3f}", "-c:a", "aac", "-b:a", "160k", str(final_audio)])
         return final_audio, probe_duration(final_audio), 1.0
 
@@ -370,7 +370,7 @@ def write_manifest(args, video: Path, text: str, source_duration: float, raw_aud
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--narration-mode", choices=["source_transcript", "curated_script"], default="source_transcript")
-    parser.add_argument("--target-seconds", type=float, default=150.0)
+    parser.add_argument("--target-seconds", type=float, default=360.0)
     parser.add_argument("--voice", default="en-GB-RyanNeural")
     parser.add_argument(
         "--tts-provider",
