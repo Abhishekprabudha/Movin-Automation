@@ -9,7 +9,7 @@ Use the included Colab notebook first to compress the source screen recording in
 - `colab/MOVIN_Compress_Video_For_GitHub_Upload.ipynb` — Google Colab notebook to compress the large input video zip.
 - `scripts/compress_video_for_github.py` — the same compression logic as a standalone Python script.
 - `.github/workflows/build-video.yml` — GitHub Actions workflow to generate the final MP4 with `en-GB-RyanNeural`.
-- `scripts/build_video.py` — extracts/transcribes narration or uses the curated script, creates Ryan Neural MP3, paces the video, and exports final MP4.
+- `scripts/build_video.py` — extracts/transcribes narration, uses repo text, or syncs an existing MP3 by pacing the video to match the audio, then exports the final MP4.
 - `narration/narration_text.md` — custom repo-stored narration text. Use this when you want the MP3 generated from text you edit in the repo.
 - `narration/curated_2_3_min.md` — fallback executive narration for MOVIN automation.
 
@@ -84,6 +84,32 @@ narration_text_file = narration/narration_text.md
 
 The workflow will generate `narration_en_gb_ryan.mp3` from that file and write the exact cleaned text used to `narration_text_used.txt`.
 
+### Sync an existing MP3 with the MP4
+
+If you already have the narration MP3 and only need to sync it to the MP4, upload the MP3 to the repo, for example:
+
+```text
+input/narration.mp3
+```
+
+Then run the workflow with:
+
+```text
+narration_mode = existing_mp3
+narration_mp3_file = input/narration.mp3
+video_speed = 1.0
+```
+
+In `existing_mp3` mode, the build skips Whisper and TTS. It copies the MP3 to the workflow outputs, measures its duration, stretches or compresses the source video to the MP3 duration, maps the MP3 as the only audio track, and exports `final_movin_ryan_neural.mp4`. Leave `video_speed` at `1.0` for a direct sync. Use `0.5` to make the narration and video last twice as long, or `2.0` to make both finish in half the time.
+
+Local equivalent:
+
+```bash
+python scripts/build_video.py \
+  --narration-mode existing_mp3 \
+  --narration-mp3-file input/narration.mp3 \
+  --video-speed 1.0
+```
 
 ### TTS provider and Azure fallback
 

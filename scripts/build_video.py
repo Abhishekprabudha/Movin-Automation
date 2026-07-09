@@ -330,6 +330,21 @@ def retime_audio(audio: Path, speed: float) -> tuple[Path, float]:
     return retimed_audio, probe_duration(retimed_audio)
 
 
+def resolve_repo_path(path_value: str) -> Path:
+    path = Path(path_value)
+    return path if path.is_absolute() else ROOT / path
+
+
+def prepare_existing_mp3(mp3_path: Path) -> Path:
+    if not mp3_path.exists():
+        raise FileNotFoundError(f"Narration MP3 file not found: {mp3_path}")
+    validate_audio_file(mp3_path, "Existing MP3")
+    out = OUTPUT / "narration_en_gb_ryan.mp3"
+    if mp3_path.resolve() != out.resolve():
+        shutil.copyfile(mp3_path, out)
+    return out
+
+
 def build_video(video: Path, audio: Path, final_duration: float, crf: int) -> Path:
     source_duration = probe_duration(video)
     speed = source_duration / final_duration
@@ -363,6 +378,7 @@ def write_manifest(args, video: Path, text: str, source_duration: float, raw_aud
         "tts_provider_requested": args.tts_provider,
         "tts_provider_used": args.tts_provider_used,
         "narration_text_file": args.narration_text_file if args.narration_mode == "repo_text" else None,
+        "narration_mp3_file": args.narration_mp3_file if args.narration_mode == "existing_mp3" else None,
         "target_seconds": args.target_seconds,
         "source_video": str(video),
         "source_video_duration_seconds": round(source_duration, 3),
@@ -381,7 +397,7 @@ def write_manifest(args, video: Path, text: str, source_duration: float, raw_aud
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--narration-mode", choices=["source_transcript", "curated_script", "repo_text"], default="source_transcript")
+    parser.add_argument("--narration-mode", choices=["source_transcript", "curated_script", "repo_text", "existing_mp3"], default="source_transcript")
     parser.add_argument("--target-seconds", type=float, default=360.0)
     parser.add_argument("--voice", default="en-GB-RyanNeural")
     parser.add_argument(
@@ -392,6 +408,7 @@ def main() -> None:
     )
     parser.add_argument("--whisper-model", default="base")
     parser.add_argument("--narration-text-file", default="narration/narration_text.md", help="Repo-relative or absolute text/Markdown file to use when --narration-mode repo_text")
+    parser.add_argument("--narration-mp3-file", default="input/narration.mp3", help="Repo-relative or absolute MP3 file to use when --narration-mode existing_mp3")
     parser.add_argument("--tts-rate", default="+0%", help="Edge TTS prosody rate, e.g. +0%%, +10%%, -5%%")
     parser.add_argument("--crf", type=int, default=23)
     parser.add_argument("--video-speed", type=float, default=1.0, help="Playback speed multiplier for the finished video. Use 0.5 for half speed, 2.0 for double speed.")
@@ -404,14 +421,27 @@ def main() -> None:
     source_duration = probe_duration(video)
     print(f"Source video duration: {source_duration:.2f}s")
 
-    text = get_narration_text(args.narration_mode, video, args.whisper_model, Path(args.narration_text_file))
-    (OUTPUT / "narration_text_used.txt").write_text(text + "\n", encoding="utf-8")
-    print(f"Narration: {len(text.split())} words / {len(text)} chars")
+    if args.narration_mode == "existing_mp3":
+        mp3_path = resolve_repo_path(args.narration_mp3_file)
+        text = f"Existing MP3 narration: {mp3_path}"
+        (OUTPUT / "narration_text_used.txt").write_text(text + "\n", encoding="utf-8")
+        print(f"Using existing narration MP3: {mp3_path}")
+        raw_audio = prepare_existing_mp3(mp3_path)
+        args.tts_provider_used = "existing_mp3"
+    else:
+        text = get_narration_text(args.narration_mode, video, args.whisper_model, Path(args.narration_text_file))
+        (OUTPUT / "narration_text_used.txt").write_text(text + "\n", encoding="utf-8")
+        print(f"Narration: {len(text.split())} words / {len(text)} chars")
+        raw_audio, tts_provider_used = synthesize_tts(text, args.voice, args.tts_rate, args.tts_provider)
+        args.tts_provider_used = tts_provider_used
 
-    raw_audio, tts_provider_used = synthesize_tts(text, args.voice, args.tts_rate, args.tts_provider)
-    args.tts_provider_used = tts_provider_used
     raw_audio_duration = probe_duration(raw_audio)
-    fitted_audio, fitted_audio_duration, audio_speed_factor = fit_audio_to_window(raw_audio, args.target_seconds)
+    if args.narration_mode == "existing_mp3":
+        fitted_audio = raw_audio
+        fitted_audio_duration = raw_audio_duration
+        audio_speed_factor = 1.0
+    else:
+        fitted_audio, fitted_audio_duration, audio_speed_factor = fit_audio_to_window(raw_audio, args.target_seconds)
     final_audio, final_audio_duration = retime_audio(fitted_audio, args.video_speed)
 
     final_video = build_video(video, final_audio, final_audio_duration, args.crf)
