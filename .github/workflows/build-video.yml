@@ -19,6 +19,15 @@ on:
         description: "Microsoft neural voice"
         required: true
         default: "en-GB-RyanNeural"
+      tts_provider:
+        description: "TTS provider: auto tries Edge first, then Azure if secrets are configured"
+        required: true
+        default: "auto"
+        type: choice
+        options:
+          - auto
+          - edge
+          - azure
       video_speed:
         description: "Playback speed multiplier for the finished video. Use 0.5 for half speed, 2.0 for double speed."
         required: true
@@ -90,8 +99,13 @@ jobs:
             --narration-mode "${{ inputs.narration_mode }}" \
             --target-seconds "${{ inputs.target_seconds }}" \
             --voice "${{ inputs.voice }}" \
+            --tts-provider "${{ inputs.tts_provider }}" \
             --whisper-model "${{ inputs.whisper_model }}" \
             --video-speed "${{ inputs.video_speed }}"
+        env:
+          AZURE_SPEECH_KEY: ${{ secrets.AZURE_SPEECH_KEY }}
+          AZURE_SPEECH_REGION: ${{ secrets.AZURE_SPEECH_REGION }}
+          AZURE_SPEECH_ENDPOINT: ${{ secrets.AZURE_SPEECH_ENDPOINT }}
 
       - name: Upload final video artifact
         uses: actions/upload-artifact@v4

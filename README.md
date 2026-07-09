@@ -58,12 +58,24 @@ This file should be under ~22 MB by default, so GitHub web upload should accept 
 ```text
 narration_mode = source_transcript
 voice = en-GB-RyanNeural
+tts_provider = auto
 target_seconds = 150
 whisper_model = base
 video_speed = 1.0
 ```
 
 Set `video_speed` below `1.0` to slow the finished video down, or above `1.0` to speed it up. For example, `0.5` creates a half-speed output and `2.0` creates a double-speed output.
+
+### TTS provider and Azure fallback
+
+The workflow defaults to `tts_provider = auto`. In auto mode the build tries Microsoft Edge TTS first and then falls back to Azure Speech TTS if Edge cannot connect. To enable Azure fallback, add these repository secrets before running the workflow:
+
+```text
+AZURE_SPEECH_KEY
+AZURE_SPEECH_REGION
+```
+
+Alternatively, advanced Azure setups can provide `AZURE_SPEECH_ENDPOINT`. If you want to force a provider for troubleshooting, set `tts_provider` to `edge` or `azure` when manually running the workflow.
 
 5. Download the artifact named `movin-ryan-neural-final-video`.
 

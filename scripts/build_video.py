@@ -147,10 +147,82 @@ def split_text(text: str, max_chars: int = 3600) -> list[str]:
     return chunks or [text]
 
 
-async def synthesize_chunk(text: str, path: Path, voice: str, rate: str) -> None:
+
+
+def validate_audio_file(path: Path, provider: str) -> None:
+    if not path.exists():
+        raise RuntimeError(f"{provider} TTS did not create {path}")
+    size = path.stat().st_size
+    if size < 1024:
+        raise RuntimeError(f"{provider} TTS created an invalid or empty audio file at {path} ({size} bytes)")
+
+
+async def synthesize_edge_chunk(text: str, path: Path, voice: str, rate: str) -> None:
     import edge_tts  # type: ignore
     communicate = edge_tts.Communicate(text=text, voice=voice, rate=rate)
     await communicate.save(str(path))
+    validate_audio_file(path, "Edge")
+
+
+def azure_rate_to_percent(rate: str) -> str:
+    value = rate.strip()
+    if not value:
+        return "+0%"
+    if value.endswith("%"):
+        return value
+    return f"{value}%"
+
+
+def synthesize_azure_chunk(text: str, path: Path, voice: str, rate: str) -> None:
+    import azure.cognitiveservices.speech as speechsdk  # type: ignore
+
+    key = os.environ.get("AZURE_SPEECH_KEY")
+    region = os.environ.get("AZURE_SPEECH_REGION")
+    endpoint = os.environ.get("AZURE_SPEECH_ENDPOINT")
+
+    if endpoint:
+        speech_config = (
+            speechsdk.SpeechConfig(subscription=key, endpoint=endpoint)
+            if key
+            else speechsdk.SpeechConfig(endpoint=endpoint)
+        )
+    elif key and region:
+        speech_config = speechsdk.SpeechConfig(subscription=key, region=region)
+    else:
+        raise RuntimeError("Azure TTS requires AZURE_SPEECH_KEY plus AZURE_SPEECH_REGION, or AZURE_SPEECH_ENDPOINT.")
+
+    speech_config.speech_synthesis_voice_name = voice
+    speech_config.set_speech_synthesis_output_format(
+        speechsdk.SpeechSynthesisOutputFormat.Audio16Khz32KBitRateMonoMp3
+    )
+    audio_config = speechsdk.audio.AudioOutputConfig(filename=str(path))
+    synthesizer = speechsdk.SpeechSynthesizer(speech_config=speech_config, audio_config=audio_config)
+    ssml = (
+        "<speak version='1.0' xml:lang='en-GB' xmlns='http://www.w3.org/2001/10/synthesis' "
+        "xmlns:mstts='https://www.w3.org/2001/mstts'>"
+        f"<voice name='{voice}'><prosody rate='{azure_rate_to_percent(rate)}'>{escape_ssml(text)}</prosody></voice>"
+        "</speak>"
+    )
+    result = synthesizer.speak_ssml_async(ssml).get()
+    if result.reason != speechsdk.ResultReason.SynthesizingAudioCompleted:
+        details = (
+            speechsdk.CancellationDetails(result)
+            if result.reason == speechsdk.ResultReason.Canceled
+            else None
+        )
+        message = details.error_details if details else str(result.reason)
+        raise RuntimeError(f"Azure TTS failed: {message}")
+    validate_audio_file(path, "Azure")
+
+
+def escape_ssml(text: str) -> str:
+    return (
+        text.replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace('"', "&quot;")
+        .replace("'", "&apos;")
+    )
 
 
 def concat_audio(chunks: list[Path], out: Path) -> None:
@@ -162,17 +234,36 @@ def concat_audio(chunks: list[Path], out: Path) -> None:
     run(["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", str(concat_file), "-c", "copy", str(out)])
 
 
-def synthesize_tts(text: str, voice: str, rate: str) -> Path:
-    print(f"Synthesising narration with {voice}, rate {rate}")
+def synthesize_tts_with_provider(text: str, voice: str, rate: str, provider: str) -> Path:
+    print(f"Synthesising narration with {provider} TTS, voice {voice}, rate {rate}")
     chunks = split_text(text)
     audio_parts: list[Path] = []
     for i, chunk in enumerate(chunks, start=1):
-        out = WORK / f"tts_part_{i:02d}.mp3"
-        asyncio.run(synthesize_chunk(chunk, out, voice, rate))
+        out = WORK / f"tts_{provider}_part_{i:02d}.mp3"
+        if provider == "edge":
+            asyncio.run(synthesize_edge_chunk(chunk, out, voice, rate))
+        elif provider == "azure":
+            synthesize_azure_chunk(chunk, out, voice, rate)
+        else:
+            raise ValueError(f"Unsupported TTS provider: {provider}")
         audio_parts.append(out)
     tts_out = OUTPUT / "narration_en_gb_ryan.mp3"
     concat_audio(audio_parts, tts_out)
+    validate_audio_file(tts_out, provider.capitalize())
     return tts_out
+
+
+def synthesize_tts(text: str, voice: str, rate: str, provider: str) -> tuple[Path, str]:
+    providers = ["edge", "azure"] if provider == "auto" else [provider]
+    errors: list[str] = []
+    for candidate in providers:
+        try:
+            return synthesize_tts_with_provider(text, voice, rate, candidate), candidate
+        except Exception as exc:
+            errors.append(f"{candidate}: {exc}")
+            print(f"WARNING: {candidate} TTS failed: {exc}", file=sys.stderr)
+    joined = "; ".join(errors)
+    raise RuntimeError(f"All configured TTS providers failed. {joined}")
 
 
 def atempo_filter(factor: float) -> str:
@@ -258,6 +349,8 @@ def write_manifest(args, video: Path, text: str, source_duration: float, raw_aud
         "narration_mode": args.narration_mode,
         "voice": args.voice,
         "tts_rate": args.tts_rate,
+        "tts_provider_requested": args.tts_provider,
+        "tts_provider_used": args.tts_provider_used,
         "target_seconds": args.target_seconds,
         "source_video": str(video),
         "source_video_duration_seconds": round(source_duration, 3),
@@ -279,6 +372,12 @@ def main() -> None:
     parser.add_argument("--narration-mode", choices=["source_transcript", "curated_script"], default="source_transcript")
     parser.add_argument("--target-seconds", type=float, default=150.0)
     parser.add_argument("--voice", default="en-GB-RyanNeural")
+    parser.add_argument(
+        "--tts-provider",
+        choices=["auto", "edge", "azure"],
+        default="auto",
+        help="TTS provider. auto tries Edge first, then Azure if credentials are configured.",
+    )
     parser.add_argument("--whisper-model", default="base")
     parser.add_argument("--tts-rate", default="+0%", help="Edge TTS prosody rate, e.g. +0%%, +10%%, -5%%")
     parser.add_argument("--crf", type=int, default=23)
@@ -296,7 +395,8 @@ def main() -> None:
     (OUTPUT / "narration_text_used.txt").write_text(text + "\n", encoding="utf-8")
     print(f"Narration: {len(text.split())} words / {len(text)} chars")
 
-    raw_audio = synthesize_tts(text, args.voice, args.tts_rate)
+    raw_audio, tts_provider_used = synthesize_tts(text, args.voice, args.tts_rate, args.tts_provider)
+    args.tts_provider_used = tts_provider_used
     raw_audio_duration = probe_duration(raw_audio)
     fitted_audio, fitted_audio_duration, audio_speed_factor = fit_audio_to_window(raw_audio, args.target_seconds)
     final_audio, final_audio_duration = retime_audio(fitted_audio, args.video_speed)
