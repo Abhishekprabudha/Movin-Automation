@@ -4,6 +4,7 @@
 Modes:
 - source_transcript: transcribe the source video's existing audio with Whisper, then revoice it.
 - curated_script: use narration/curated_2_3_min.md.
+- repo_text: use a checked-in narration text file.
 """
 
 from __future__ import annotations
@@ -117,10 +118,20 @@ def transcribe_with_whisper(audio: Path, model_name: str) -> str:
     return text
 
 
-def get_narration_text(mode: str, video: Path, whisper_model: str) -> str:
+def get_narration_text(mode: str, video: Path, whisper_model: str, narration_text_file: Path) -> str:
     if mode == "curated_script":
         script_path = NARRATION / "curated_2_3_min.md"
         return clean_markdown_text(script_path.read_text(encoding="utf-8"))
+
+    if mode == "repo_text":
+        if not narration_text_file.is_absolute():
+            narration_text_file = ROOT / narration_text_file
+        if not narration_text_file.exists():
+            raise FileNotFoundError(f"Narration text file not found: {narration_text_file}")
+        text = clean_markdown_text(narration_text_file.read_text(encoding="utf-8"))
+        if len(text) < 30:
+            raise RuntimeError(f"Narration text file is too short: {narration_text_file}")
+        return text
 
     if mode == "source_transcript":
         audio = extract_audio_for_transcription(video)
@@ -351,6 +362,7 @@ def write_manifest(args, video: Path, text: str, source_duration: float, raw_aud
         "tts_rate": args.tts_rate,
         "tts_provider_requested": args.tts_provider,
         "tts_provider_used": args.tts_provider_used,
+        "narration_text_file": args.narration_text_file if args.narration_mode == "repo_text" else None,
         "target_seconds": args.target_seconds,
         "source_video": str(video),
         "source_video_duration_seconds": round(source_duration, 3),
@@ -369,7 +381,7 @@ def write_manifest(args, video: Path, text: str, source_duration: float, raw_aud
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--narration-mode", choices=["source_transcript", "curated_script"], default="source_transcript")
+    parser.add_argument("--narration-mode", choices=["source_transcript", "curated_script", "repo_text"], default="source_transcript")
     parser.add_argument("--target-seconds", type=float, default=360.0)
     parser.add_argument("--voice", default="en-GB-RyanNeural")
     parser.add_argument(
@@ -379,6 +391,7 @@ def main() -> None:
         help="TTS provider. auto tries Edge first, then Azure if credentials are configured.",
     )
     parser.add_argument("--whisper-model", default="base")
+    parser.add_argument("--narration-text-file", default="narration/narration_text.md", help="Repo-relative or absolute text/Markdown file to use when --narration-mode repo_text")
     parser.add_argument("--tts-rate", default="+0%", help="Edge TTS prosody rate, e.g. +0%%, +10%%, -5%%")
     parser.add_argument("--crf", type=int, default=23)
     parser.add_argument("--video-speed", type=float, default=1.0, help="Playback speed multiplier for the finished video. Use 0.5 for half speed, 2.0 for double speed.")
@@ -391,7 +404,7 @@ def main() -> None:
     source_duration = probe_duration(video)
     print(f"Source video duration: {source_duration:.2f}s")
 
-    text = get_narration_text(args.narration_mode, video, args.whisper_model)
+    text = get_narration_text(args.narration_mode, video, args.whisper_model, Path(args.narration_text_file))
     (OUTPUT / "narration_text_used.txt").write_text(text + "\n", encoding="utf-8")
     print(f"Narration: {len(text.split())} words / {len(text)} chars")
 

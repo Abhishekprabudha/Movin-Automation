@@ -10,6 +10,7 @@ Use the included Colab notebook first to compress the source screen recording in
 - `scripts/compress_video_for_github.py` — the same compression logic as a standalone Python script.
 - `.github/workflows/build-video.yml` — GitHub Actions workflow to generate the final MP4 with `en-GB-RyanNeural`.
 - `scripts/build_video.py` — extracts/transcribes narration or uses the curated script, creates Ryan Neural MP3, paces the video, and exports final MP4.
+- `narration/narration_text.md` — custom repo-stored narration text. Use this when you want the MP3 generated from text you edit in the repo.
 - `narration/curated_2_3_min.md` — fallback executive narration for MOVIN automation.
 
 ## Step 1 — Compress the source video in Colab
@@ -65,6 +66,24 @@ video_speed = 1.0
 ```
 
 Set `video_speed` below `1.0` to slow the finished video down, or above `1.0` to speed it up. For example, `0.5` creates a half-speed output and `2.0` creates a double-speed output.
+
+### Use repo-stored narration text
+
+If you want the MP3 generated from text stored in this repo instead of Whisper-transcribing the source video, edit:
+
+```text
+narration/narration_text.md
+```
+
+Then run the workflow with:
+
+```text
+narration_mode = repo_text
+narration_text_file = narration/narration_text.md
+```
+
+The workflow will generate `narration_en_gb_ryan.mp3` from that file and write the exact cleaned text used to `narration_text_used.txt`.
+
 
 ### TTS provider and Azure fallback
 
